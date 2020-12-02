@@ -17,8 +17,12 @@ where
 }
 
 /// Checks a password's validity according to a policy.
-fn check_pwd_validity(ch: char, min_occurs: i32, max_occurs: i32, passwd: String) -> bool {
-    //println!("{} {} {}, {}", min_occurs, max_occurs, ch, passwd);
+fn check_pwd_validity_part1(
+    ch: char,
+    min_occurs: usize,
+    max_occurs: usize,
+    passwd: String,
+) -> bool {
     let mut occurs = 0;
     for c in passwd.chars() {
         if c == ch {
@@ -31,11 +35,24 @@ fn check_pwd_validity(ch: char, min_occurs: i32, max_occurs: i32, passwd: String
     occurs >= min_occurs
 }
 
+/// Checks a password's validity according to a policy.
+fn check_pwd_validity_part2(ch: char, pos1: usize, pos2: usize, passwd: String) -> bool {
+    let chars: Vec<char> = passwd.chars().collect();
+    if passwd.len() < pos1 || passwd.len() < pos2 {
+        false
+    } else {
+        (chars[pos1 - 1] == ch) != (chars[pos2 - 1] == ch)
+    }
+}
+
 /// Returns the number of valid passwords in a file.
-fn check_policies<P>(filename: P) -> Result<i32, String>
+fn check_policies<P>(filename: P, part: u8) -> Result<i32, String>
 where
     P: AsRef<Path>,
 {
+    if part != 1 && part != 2 {
+        return Err(format!("Invalid part {}", part));
+    }
     if !filename.as_ref().exists() {
         return Err("File does not exists".into());
     }
@@ -59,21 +76,21 @@ where
         if bounds.len() != 2 {
             return Err(format!("Invalid bounds on line {}", i + 1));
         }
-        let min_occurs: i32 = match bounds[0].parse() {
+        let n1: usize = match bounds[0].parse() {
             Ok(n) => n,
             Err(_) => {
                 return Err(format!(
-                    "Invalid bound {} for policy on line {}",
+                    "Invalid number \"{}\" for policy on line {}",
                     bounds[0],
                     i + 1
                 ))
             }
         };
-        let max_occurs: i32 = match bounds[1].parse() {
+        let n2: usize = match bounds[1].parse() {
             Ok(n) => n,
             Err(_) => {
                 return Err(format!(
-                    "Invalid bound {} for policy on line {}",
+                    "Invalid number \"{}\" for policy on line {}",
                     bounds[1],
                     i + 1
                 ))
@@ -87,8 +104,18 @@ where
 
         let passwd: String = tokens[2].into();
 
-        if check_pwd_validity(ch, min_occurs, max_occurs, passwd) {
-            num_valid += 1;
+        match part {
+            1 => {
+                if check_pwd_validity_part1(ch, n1, n2, passwd) {
+                    num_valid += 1;
+                }
+            }
+            2 => {
+                if check_pwd_validity_part2(ch, n1, n2, passwd) {
+                    num_valid += 1;
+                }
+            }
+            _ => {}
         }
     }
     Ok(num_valid)
@@ -104,12 +131,24 @@ fn main() {
 
     // Part 1
     println!("==== Part 1 ====");
-    match check_policies(input_path) {
+    match check_policies(input_path, 1) {
         Ok(num_valid) => {
             println!("{} valid policies found", num_valid);
         }
         Err(e) => {
             eprintln!("Part 1 failed: {}", e);
+            process::exit(1);
+        }
+    }
+
+    // Part 2
+    println!("\n==== Part 2 ====");
+    match check_policies(input_path, 2) {
+        Ok(num_valid) => {
+            println!("{} valid policies found", num_valid);
+        }
+        Err(e) => {
+            eprintln!("Part 2 failed: {}", e);
             process::exit(1);
         }
     }
