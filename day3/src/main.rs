@@ -56,6 +56,7 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+/// Reads a tree map from a file.
 fn read_map<P>(filename: P) -> Result<RepeatingTreeMap, String>
 where
     P: AsRef<Path>,
@@ -127,4 +128,13 @@ fn main() {
     println!("==== Part 1 ====");
     let trees_hit = check_slope(&map, 3, 1);
     println!("{} trees hit", trees_hit);
+
+    println!("\n==== Part 2 ====");
+    let mut tree_prod = 1;
+    tree_prod *= check_slope(&map, 1, 1);
+    tree_prod *= check_slope(&map, 3, 1);
+    tree_prod *= check_slope(&map, 5, 1);
+    tree_prod *= check_slope(&map, 7, 1);
+    tree_prod *= check_slope(&map, 1, 2);
+    println!("product of all trees hit is {}", tree_prod);
 }
