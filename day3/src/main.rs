@@ -1,7 +1,6 @@
-use std::fs::File;
-use std::io::{self, BufRead};
 use std::path::Path;
 use std::{env, process};
+use utils::read_lines;
 
 const TREE_CHAR: char = '#';
 
@@ -45,15 +44,6 @@ impl RepeatingTreeMap {
         let y = y % self.h;
         self.grid[y][x]
     }
-}
-
-/// Gets an iterator for the lines in a file.
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }
 
 /// Reads a tree map from a file.

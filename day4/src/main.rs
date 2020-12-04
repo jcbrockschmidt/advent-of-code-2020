@@ -3,25 +3,15 @@ extern crate lazy_static;
 
 mod passport;
 
-use std::fs::File;
-use std::io::{self, BufRead};
 use std::path::Path;
 use std::{env, process};
+use utils::read_lines;
 
 use passport::Passport;
 
 /// Prints usage statement for the executable.
 fn usage(args: Vec<String>) {
     println!("Usage: {} input_file", args[0]);
-}
-
-/// Gets an iterator for the lines in a file.
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }
 
 /// Reads passports from a file.
@@ -116,7 +106,7 @@ fn main() {
         usage(args);
         process::exit(1);
     }
-    let input_path = Path::new(&args[1]);
+    let input_path = String::from(&args[1]);
     let passports = match read_passports(&input_path) {
         Ok(n) => n,
         Err(e) => {

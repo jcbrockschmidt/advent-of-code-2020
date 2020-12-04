@@ -1,19 +1,9 @@
-use std::fs::File;
-use std::io::{self, BufRead};
 use std::path::Path;
 use std::{env, process};
+use utils::read_lines;
 
 fn usage(args: Vec<String>) {
     println!("Usage: {} input_file", args[0]);
-}
-
-/// Gets an iterator for the lines in a file.
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
 }
 
 /// Checks a password's validity according to a policy.
