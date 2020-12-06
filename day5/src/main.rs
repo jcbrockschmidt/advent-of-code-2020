@@ -1,6 +1,7 @@
 use std::cmp;
+use std::env;
 use std::path::Path;
-use std::{env, process};
+use std::process;
 use utils::read_lines;
 
 struct BoardingPass {
@@ -63,15 +64,7 @@ where
 
         // Get the row.
         let mut row_bounds: (u8, u8) = (0, 127);
-        // let mut min_row = 0;
-        // let mut max_row = 127;
         for ch in line[..7].chars() {
-            // let step = (max_row - min_row + 1) / 2;
-            // match ch {
-            //     'F' => max_row = max_row - step,
-            //     'B' => min_row = min_row + step,
-            //     _ => return Err(format!("Bad character '{}' on line {}", ch, i + 1)),
-            // }
             match ch {
                 'F' => row_bounds = bsp_split(row_bounds, true),
                 'B' => row_bounds = bsp_split(row_bounds, false),
@@ -80,19 +73,16 @@ where
         }
 
         // Get the column.
-        let mut min_col = 0;
-        let mut max_col = 7;
+        let mut col_bounds: (u8, u8) = (0, 7);
         for ch in line[7..].chars() {
-            let step = (max_col - min_col + 1) / 2;
             match ch {
-                'L' => max_col = max_col - step,
-                'R' => min_col = min_col + step,
+                'L' => col_bounds = bsp_split(col_bounds, true),
+                'R' => col_bounds = bsp_split(col_bounds, false),
                 _ => return Err(format!("Bad character '{}' on line {}", ch, i + 1)),
             }
         }
 
-        //passes.push(BoardingPass::new(min_row, min_col));
-        passes.push(BoardingPass::new(row_bounds.0, min_col));
+        passes.push(BoardingPass::new(row_bounds.0, col_bounds.0));
     }
     Ok(passes)
 }
@@ -102,6 +92,20 @@ fn get_highest_id(passes: &Vec<BoardingPass>) -> u16 {
     passes
         .iter()
         .fold(0, |max_id, bp| cmp::max(max_id, bp.seat_id))
+}
+
+/// Gets the missing boarding pass ID.
+fn get_missing_pass(passes: &Vec<BoardingPass>) -> Option<u16> {
+    let mut p_refs: Vec<&BoardingPass> = passes.iter().collect();
+    p_refs.sort_by_key(|p| p.seat_id);
+    let mut prev_id = p_refs[0].seat_id;
+    for p in p_refs[1..].iter() {
+        if p.seat_id != prev_id + 1 {
+            return Some(p.seat_id - 1);
+        }
+        prev_id = p.seat_id;
+    }
+    None
 }
 
 fn main() {
@@ -122,4 +126,10 @@ fn main() {
     println!("\n==== Part 1 ====");
     let highest_id = get_highest_id(&passes);
     println!("Highest seat ID: {}", highest_id);
+
+    println!("\n==== Part 2 ====");
+    match get_missing_pass(&passes) {
+        Some(id) => println!("Missing seat ID: {}", id),
+        None => println!("No missing pass found"),
+    }
 }
