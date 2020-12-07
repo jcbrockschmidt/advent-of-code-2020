@@ -82,14 +82,10 @@ where
 
 /// Counts how many bags can contain at least one bag of color `color`.
 fn count_contain_color(bag_rules: &Vec<BagRule>, color: String) -> u32 {
-    let mut count = 0;
-    // Contruct a direct, unweighted graph.
+    // Contruct a direct, unweighted graph from children bags to their parents
     let mut adj_list: HashMap<String, Vec<String>> = HashMap::new();
     for rule in bag_rules {
         // Ignore empty bags. They are irrelevant.
-        if rule.contains.len() == 0 {
-            continue;
-        }
         for contains_color in rule.contains.keys() {
             if !adj_list.contains_key(contains_color) {
                 let new_list: Vec<String> = Vec::new();
@@ -102,27 +98,82 @@ fn count_contain_color(bag_rules: &Vec<BagRule>, color: String) -> u32 {
         }
     }
 
-    // Count all primary and child nodes for `color` using BFS.
+    // Count all primary and child nodes for `color` using breadth-first traversal.
     // Assumes there are no loops.
+    let mut count = 0;
     let mut visited: HashSet<String> = HashSet::new();
     let mut queue: Vec<String> = match adj_list.get(&color) {
         Some(children) => children.iter().cloned().collect(),
         None => return 0,
     };
     while queue.len() > 0 {
-        let color = queue.remove(0);
-        if visited.contains(&color) {
+        let node_color = queue.remove(0);
+        if visited.contains(&node_color) {
             continue;
         }
-        visited.insert(color.clone());
+        visited.insert(node_color.clone());
         count += 1;
-        if let Some(children) = adj_list.get(&color) {
-            for c in children {
-                queue.push(c.clone());
+        if let Some(parents) = adj_list.get(&node_color) {
+            for p in parents {
+                queue.push(p.clone());
             }
         }
     }
     count
+}
+
+/// Counts how many bags fit with a bag of color `color`.
+fn count_bags_within(bag_rules: &Vec<BagRule>, color: String) -> u32 {
+    // First, find all bags within the bag of color `color`.
+
+    // Contruct a direct, weighted graph from parent bags to their children.
+    let mut adj_list: HashMap<String, Vec<(String, u32)>> = HashMap::new();
+    for rule in bag_rules {
+        let mut edges: Vec<(String, u32)> = Vec::new();
+        for (contains_color, amount) in rule.contains.iter() {
+            edges.push((contains_color.clone(), *amount))
+        }
+        adj_list.insert(rule.color.clone(), edges);
+    }
+
+    // Use breadth-first traversal to get all valid bags.
+    let mut traverse_order: Vec<String> = Vec::new();
+    traverse_order.push(color.clone());
+    let mut visited: HashSet<String> = HashSet::new();
+    let mut queue: Vec<String> = match adj_list.get(&color) {
+        Some(children) => children
+            .iter()
+            .map(|(node_color, _)| node_color)
+            .cloned()
+            .collect(),
+        None => return 0,
+    };
+    while queue.len() > 0 {
+        let node_color = queue.remove(0);
+        if visited.contains(&color) {
+            continue;
+        }
+        visited.insert(node_color.clone());
+        traverse_order.push(node_color.clone());
+        if let Some(children) = adj_list.get(&node_color) {
+            for (child_color, _) in children {
+                queue.push(child_color.clone());
+            }
+        }
+    }
+
+    // Now traverse the tree backwards, computing bag counts along the way.
+    let mut bag_counts: HashMap<String, u32> = HashMap::new();
+    for node_color in traverse_order.iter().rev() {
+        let mut node_count = 1;
+        if let Some(children) = adj_list.get(node_color) {
+            for (child, amount) in children.iter() {
+                node_count += bag_counts[child] * amount;
+            }
+        }
+        bag_counts.insert(node_color.clone(), node_count);
+    }
+    bag_counts[&color] - 1
 }
 
 fn main() {
@@ -143,7 +194,14 @@ fn main() {
     println!("\n==== Part 1 ====");
     let num_contain_shiny_gold = count_contain_color(&bag_rules, "shiny gold".to_string());
     println!(
-        "Number of bags that contain a shiny hold bag: {}",
+        "Number of bags that contain a shiny bag: {}",
         num_contain_shiny_gold
+    );
+
+    println!("\n==== Part 2 ====");
+    let bags_within_shiny_gold = count_bags_within(&bag_rules, "shiny gold".to_string());
+    println!(
+        "Number of bags within a shiny bag: {}",
+        bags_within_shiny_gold
     );
 }
