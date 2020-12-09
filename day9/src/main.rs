@@ -38,11 +38,13 @@ where
     Ok(nums)
 }
 
-/// Finds the first number in the list that is not a sum of any two of the preceding `scope` numbers.
+/// Finds the first number that breaks the XMAS encryption.
 fn find_invalid_num(nums: &Vec<usize>, scope: usize) -> Option<usize> {
+    // First `scope` numbers are always valid.
     if nums.len() <= scope {
         return None;
     }
+    // Finds the first number in the list that is not a sum of any two of the preceding `scope` numbers.
     for (i, n1) in nums[scope..].iter().enumerate() {
         let mut is_valid = false;
         let prev_nums = &nums[i..i + scope];
@@ -62,6 +64,32 @@ fn find_invalid_num(nums: &Vec<usize>, scope: usize) -> Option<usize> {
         }
         if !is_valid {
             return Some(*n1);
+        }
+    }
+    None
+}
+
+/// Finds the encryption weakness in the XMAS-encrypted list of numbers given an invalid number `invalid_num` yielded by `find_invalid_num`.
+fn find_weakness(nums: &Vec<usize>, invalid_num: usize) -> Option<usize> {
+    // Find a contiguous set of numbers that equals our invalid number.
+    for (i, n1) in nums[..nums.len() - 1].iter().enumerate() {
+        let mut min = *n1;
+        let mut max = *n1;
+        let mut sum = *n1;
+        for n2 in nums[i + 1..].iter() {
+            sum += *n2;
+            if *n2 < min {
+                min = *n2;
+            }
+            if *n2 > max {
+                max = *n2
+            }
+            if sum == invalid_num {
+                // Encryption weakness found.
+                return Some(min + max);
+            } else if sum > invalid_num {
+                break;
+            }
         }
     }
     None
@@ -90,8 +118,22 @@ fn main() {
     };
 
     println!("\n==== Part 1 ====");
-    match find_invalid_num(&nums, scope) {
-        Some(n) => println!("First invalid number: {}", n),
-        None => println!("No invalid number found"),
-    }
+    let invalid_num = match find_invalid_num(&nums, scope) {
+        Some(n) => n,
+        None => {
+            eprintln!("No invalid number found");
+            process::exit(1);
+        }
+    };
+    println!("First invalid number: {}", invalid_num);
+
+    println!("\n==== Part 2 ====");
+    let weakness = match find_weakness(&nums, invalid_num) {
+        Some(n) => n,
+        None => {
+            eprintln!("Failed to find encryption weakness");
+            process::exit(1);
+        }
+    };
+    println!("Encryption weakness: {}", weakness);
 }
