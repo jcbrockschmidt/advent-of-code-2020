@@ -1,3 +1,6 @@
+use std::cmp::min;
+use std::usize;
+
 /// A single tile for a seating map.
 #[derive(Clone, Copy, PartialEq)]
 enum SeatingTile {
@@ -68,6 +71,59 @@ impl SeatingMap {
         cnt
     }
 
+    /// Counts the number of seats within a seat's sightline that are occupied.
+    fn count_sightline_filled(&self, x: usize, y: usize) -> usize {
+        let w = self.width();
+        let h = self.height();
+        if x >= w || y >= h {
+            // Out of bounds. Do nothing.
+            return 0;
+        }
+        let mut cnt = 0;
+        for dx in 0..3 {
+            for dy in 0..3 {
+                if (dx == 1 && dy == 1)
+                    || (dx == 0 && x == 0)
+                    || (dx == 2 && x == w - 1)
+                    || (dy == 0 && y == 0)
+                    || (dy == 2 && y == h - 1)
+                {
+                    continue;
+                }
+                // Look down this direction until a wall or seat is hit.
+                // This would probably be simpler if we used signed integers for coordinates.
+                let num_steps_x = match dx {
+                    0 => x,
+                    1 => usize::MAX,
+                    2 => w - x - 1,
+                    _ => continue,
+                };
+                let num_steps_y = match dy {
+                    0 => y,
+                    1 => usize::MAX,
+                    2 => h - y - 1,
+                    _ => continue,
+                };
+                let num_steps = min(num_steps_x, num_steps_y);
+                let mut new_x = x;
+                let mut new_y = y;
+                for step in 1..num_steps + 1 {
+                    new_x = new_x + dx - 1;
+                    new_y = new_y + dy - 1;
+                    match self.get_tile(new_x, new_y) {
+                        SeatingTile::FilledSeat => {
+                            cnt += 1;
+                            break;
+                        }
+                        SeatingTile::EmptySeat => break,
+                        _ => {}
+                    }
+                }
+            }
+        }
+        cnt
+    }
+
     /// Gets the width of the seating map.
     pub fn width(&self) -> usize {
         if self.grid.len() == 0 {
@@ -101,8 +157,8 @@ impl SeatingMap {
         cnt
     }
 
-    /// Moves seating occupants around. May not necessarily change anything.
-    pub fn next(&self) -> Self {
+    /// Moves seating occupants around based on directly adjacent seating.
+    pub fn next_adj(&self) -> Self {
         let mut next_map = self.clone();
         for y in 0..self.height() {
             for x in 0..self.width() {
@@ -124,11 +180,48 @@ impl SeatingMap {
         next_map
     }
 
-    /// Shuffles seat occupants around until seat positions no longer change.
-    pub fn get_stable(&self) -> Self {
-        let mut prev = self.next();
+    /// Shuffles seat occupants around using the `next_adj` method until seat positions
+    /// no longer change.
+    pub fn get_stable_adj(&self) -> Self {
+        let mut prev = self.next_adj();
         loop {
-            let next = prev.next();
+            let next = prev.next_adj();
+            if next == prev {
+                return prev;
+            }
+            prev = next;
+        }
+    }
+
+    /// Moves seating occupants around based on seats in their sightline.
+    pub fn next_sightline(&self) -> Self {
+        let mut next_map = self.clone();
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                match self.get_tile(x, y) {
+                    SeatingTile::FilledSeat => {
+                        if self.count_sightline_filled(x, y) >= 5 {
+                            next_map.set_tile(x, y, SeatingTile::EmptySeat)
+                        }
+                    }
+                    SeatingTile::EmptySeat => {
+                        if self.count_sightline_filled(x, y) == 0 {
+                            next_map.set_tile(x, y, SeatingTile::FilledSeat)
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        next_map
+    }
+
+    /// Shuffles seat occupants around using the `next_sightline` method until seat
+    /// positions no longer change.
+    pub fn get_stable_sightline(&self) -> Self {
+        let mut prev = self.next_sightline();
+        loop {
+            let next = prev.next_sightline();
             if next == prev {
                 return prev;
             }

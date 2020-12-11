@@ -63,7 +63,12 @@ fn main() {
     };
 
     println!("\n==== Part 1 ====");
-    let stable = seating_map.get_stable();
-    let filled = stable.count_filled_seats();
-    println!("Final number of filled seats: {}", filled);
+    let stable_adj = seating_map.get_stable_adj();
+    let filled_adj = stable_adj.count_filled_seats();
+    println!("Final number of filled seats: {}", filled_adj);
+
+    println!("\n==== Part 2 ====");
+    let stable_sight = seating_map.get_stable_sightline();
+    let filled_sight = stable_sight.count_filled_seats();
+    println!("Final number of filled seats: {}", filled_sight);
 }
