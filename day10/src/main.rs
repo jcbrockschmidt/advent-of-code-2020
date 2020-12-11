@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
 use std::env;
 use std::path::Path;
 use std::process;
+use std::u32;
 use utils::read_lines;
 
 /// Prints usage statement for the executable.
@@ -63,6 +65,29 @@ fn count_jolt_diffs(adapters: &Vec<u32>) -> (u32, u32) {
     (diff1_cnt, diff3_cnt)
 }
 
+/// Count the number of possible distinct adapter configurations.
+fn count_arrangements(adapters: &Vec<u32>) -> usize {
+    if adapters.is_empty() {
+        return 1;
+    }
+    // Assumes there is at most 1 adapter for a given joltage.
+    let mut num_arr_map: BTreeMap<u32, usize> = BTreeMap::new();
+    // Must use the last adapter.
+    num_arr_map.insert(adapters[adapters.len() - 1], 1);
+    for jolt in adapters.iter().rev().skip(1) {
+        let mut arrs = 0;
+        for i in 1..4 {
+            arrs += *num_arr_map.get(&(jolt + i)).unwrap_or(&0)
+        }
+        num_arr_map.insert(*jolt, arrs);
+    }
+    let mut final_arrs = 0;
+    for i in 1..4 {
+        final_arrs += *num_arr_map.get(&i).unwrap_or(&0)
+    }
+    final_arrs
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
@@ -85,4 +110,8 @@ fn main() {
         diff1, diff3
     );
     println!("Their product is {}", diff1 * diff3);
+
+    println!("\n==== Part 2 ====");
+    let num_arr = count_arrangements(&adapters);
+    println!("{} possible adapter arrangements", num_arr);
 }
