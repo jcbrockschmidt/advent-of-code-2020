@@ -82,13 +82,10 @@ where
                 ));
             }
         };
-        let mut val: i32 = match line[1..].parse() {
+        let val: i32 = match line[1..].parse() {
             Ok(l) => l,
             Err(_) => return Err(format!("Failed to number on line {}", i + 1)),
         };
-        if let InstrType::Rotate(_) = typ {
-            val /= 90;
-        }
         ins.push(Instruction { typ: typ, val: val });
     }
     Ok(ins)
@@ -96,7 +93,7 @@ where
 
 /// Executes the ship's movement instructions and returns the final position difference.
 /// Ship begins pointing east.
-fn execute_instructions(ins: &Vec<Instruction>) -> (i32, i32) {
+fn exec_ins_ship(ins: &Vec<Instruction>) -> (i32, i32) {
     let mut x: i32 = 0;
     let mut y: i32 = 0;
     let ship_dirs: [StrafeDir; 4] = [
@@ -115,8 +112,8 @@ fn execute_instructions(ins: &Vec<Instruction>) -> (i32, i32) {
             }
             InstrType::Rotate(dir) => {
                 let i_diff = match dir {
-                    RotateDir::Left => -i.val,
-                    RotateDir::Right => i.val,
+                    RotateDir::Left => -i.val / 90,
+                    RotateDir::Right => i.val / 90,
                 };
                 let mut new_rot_i = (i32::try_from(rot_i).unwrap() + i_diff) % 4;
                 if new_rot_i < 0 {
@@ -140,6 +137,54 @@ fn execute_instructions(ins: &Vec<Instruction>) -> (i32, i32) {
     (x, y)
 }
 
+/// Rotates a point (`x`, `y`) `degree` degrees about the origin.
+fn rotate_point(x: i32, y: i32, degree: i32) -> (i32, i32) {
+    let cos: [i32; 4] = [1, 0, -1, 0];
+    let sin: [i32; 4] = [0, 1, 0, -1];
+    let mut step = (degree / 90) % 4;
+    if step < 0 {
+        step = 4 + step;
+    }
+    let i = usize::try_from(step).unwrap();
+    let new_x = x * cos[i] - y * sin[i];
+    let new_y = x * sin[i] + y * cos[i];
+    (new_x, new_y)
+}
+
+/// Executes the ship's movement instructions using the waypoing method and returns the
+/// final position difference.
+fn exec_ins_waypoint(ins: &Vec<Instruction>) -> (i32, i32) {
+    let mut ship_x: i32 = 0;
+    let mut ship_y: i32 = 0;
+    // Position of the waypoint relative to the ship.
+    let mut wp_x: i32 = 10;
+    let mut wp_y: i32 = 1;
+    for i in ins.iter() {
+        match &i.typ {
+            InstrType::Strafe(dir) => match dir {
+                StrafeDir::North => wp_y += i.val,
+                StrafeDir::East => wp_x += i.val,
+                StrafeDir::South => wp_y -= i.val,
+                StrafeDir::West => wp_x -= i.val,
+            },
+            InstrType::Rotate(dir) => {
+                let degrees = match dir {
+                    RotateDir::Left => i.val,
+                    RotateDir::Right => -i.val,
+                };
+                let (new_wp_x, new_wp_y) = rotate_point(wp_x, wp_y, degrees);
+                wp_x = new_wp_x;
+                wp_y = new_wp_y;
+            }
+            InstrType::Forward => {
+                ship_x += wp_x * i.val;
+                ship_y += wp_y * i.val;
+            }
+        }
+    }
+    (ship_x, ship_y)
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
@@ -156,9 +201,16 @@ fn main() {
     };
 
     println!("\n==== Part 1 ====");
-    let (final_x, final_y) = execute_instructions(&ins);
+    let (final_x, final_y) = exec_ins_ship(&ins);
     println!(
-        "Final Manhattan distance: {}",
+        "Final Manhattan distance using ship only: {}",
         final_x.abs() + final_y.abs()
+    );
+
+    println!("\n==== Part 2 ====");
+    let (final_wp_x, final_wp_y) = exec_ins_waypoint(&ins);
+    println!(
+        "Final Manhattan distance using a waypoint: {}",
+        final_wp_x.abs() + final_wp_y.abs()
     );
 }
