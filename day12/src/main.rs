@@ -1,22 +1,38 @@
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::env;
 use std::path::Path;
 use std::process;
 use std::usize;
 use utils::read_lines;
 
-enum InstructionType {
+/// Directions ship can strafe in.
+#[derive(Clone, Copy)]
+enum StrafeDir {
     North,
     East,
     South,
     West,
+}
+
+/// Directions ship can rotate.
+#[derive(Clone, Copy)]
+enum RotateDir {
     Left,
     Right,
+}
+
+/// Types of movement instructions for a ship.
+#[derive(Clone, Copy)]
+enum InstrType {
+    Strafe(StrafeDir),
+    Rotate(RotateDir),
     Forward,
 }
 
+/// An instruction type it's magnitude.
+#[derive(Clone, Copy)]
 struct Instruction {
-    pub typ: InstructionType,
+    pub typ: InstrType,
     pub val: i32,
 }
 
@@ -51,13 +67,13 @@ where
         }
         let ins_char = line.chars().nth(0).unwrap();
         let typ = match ins_char {
-            'N' => InstructionType::North,
-            'E' => InstructionType::East,
-            'S' => InstructionType::South,
-            'W' => InstructionType::West,
-            'L' => InstructionType::Left,
-            'R' => InstructionType::Right,
-            'F' => InstructionType::Forward,
+            'N' => InstrType::Strafe(StrafeDir::North),
+            'E' => InstrType::Strafe(StrafeDir::East),
+            'S' => InstrType::Strafe(StrafeDir::South),
+            'W' => InstrType::Strafe(StrafeDir::West),
+            'L' => InstrType::Rotate(RotateDir::Left),
+            'R' => InstrType::Rotate(RotateDir::Right),
+            'F' => InstrType::Forward,
             _ => {
                 return Err(format!(
                     "Invalid instruction type \"{}\" on line {}",
@@ -66,53 +82,58 @@ where
                 ));
             }
         };
-        let val: i32 = match line[1..].parse() {
+        let mut val: i32 = match line[1..].parse() {
             Ok(l) => l,
             Err(_) => return Err(format!("Failed to number on line {}", i + 1)),
         };
-        // TODO: check value for rotations.
+        if let InstrType::Rotate(_) = typ {
+            val /= 90;
+        }
         ins.push(Instruction { typ: typ, val: val });
     }
     Ok(ins)
 }
 
-/// TODO
+/// Executes the ship's movement instructions and returns the final position difference.
+/// Ship begins pointing east.
 fn execute_instructions(ins: &Vec<Instruction>) -> (i32, i32) {
     let mut x: i32 = 0;
     let mut y: i32 = 0;
-    // TODO: Make const
-    let x_mults: [i32; 4] = [0, 1, 0, -1];
-    let y_mults: [i32; 4] = [1, 0, -1, 0];
+    let ship_dirs: [StrafeDir; 4] = [
+        StrafeDir::North,
+        StrafeDir::East,
+        StrafeDir::South,
+        StrafeDir::West,
+    ];
     // Ship starts by facing east.
-    let mut rot_i: i32 = 1;
+    let mut rot_i: usize = 1;
     for i in ins.iter() {
-        match i.typ {
-            InstructionType::North => {
-                y += i.val;
+        let mut strafe = None;
+        match &i.typ {
+            InstrType::Strafe(dir) => {
+                strafe = Some(dir);
             }
-            InstructionType::East => {
-                x += i.val;
-            }
-            InstructionType::South => {
-                y -= i.val;
-            }
-            InstructionType::West => {
-                x -= i.val;
-            }
-            InstructionType::Left => {
-                let diff = -i.val / 90;
-                rot_i = (rot_i + diff) % 4;
-                if rot_i < 0 {
-                    rot_i = 4 + rot_i;
+            InstrType::Rotate(dir) => {
+                let i_diff = match dir {
+                    RotateDir::Left => -i.val,
+                    RotateDir::Right => i.val,
+                };
+                let mut new_rot_i = (i32::try_from(rot_i).unwrap() + i_diff) % 4;
+                if new_rot_i < 0 {
+                    new_rot_i = 4 + new_rot_i;
                 }
+                rot_i = usize::try_from(new_rot_i).unwrap();
             }
-            InstructionType::Right => {
-                let diff = i.val / 90;
-                rot_i = (rot_i + diff) % 4;
+            InstrType::Forward => {
+                strafe = Some(&ship_dirs[rot_i]);
             }
-            InstructionType::Forward => {
-                x = x + i.val * x_mults[usize::try_from(rot_i).unwrap()];
-                y = y + i.val * y_mults[usize::try_from(rot_i).unwrap()];
+        }
+        if let Some(dir) = strafe {
+            match dir {
+                StrafeDir::North => y += i.val,
+                StrafeDir::East => x += i.val,
+                StrafeDir::South => y -= i.val,
+                StrafeDir::West => x -= i.val,
             }
         }
     }
