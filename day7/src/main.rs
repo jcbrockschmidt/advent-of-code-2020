@@ -35,7 +35,7 @@ fn usage(args: Vec<String>) {
     println!("Usage: {} input_file", args[0]);
 }
 
-/// Reads bad rules from a file.
+/// Reads bag rules from a file.
 fn read_bag_rules<P>(filename: P) -> Result<Vec<BagRule>, String>
 where
     P: AsRef<Path>,

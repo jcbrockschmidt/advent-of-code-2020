@@ -12,7 +12,7 @@ fn usage(args: Vec<String>) {
     println!("Usage: {} input_file scope", args[0]);
 }
 
-/// Reads bad rules from a file.
+/// Reads a seating map from a file.
 fn read_seating_map<P>(filename: P) -> Result<SeatingMap, String>
 where
     P: AsRef<Path>,

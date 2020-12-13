@@ -41,7 +41,7 @@ fn usage(args: Vec<String>) {
     println!("Usage: {} input_file scope", args[0]);
 }
 
-/// Reads bad rules from a file.
+/// Reads instructions from a file.
 fn read_instructions<P>(filename: P) -> Result<Vec<Instruction>, String>
 where
     P: AsRef<Path>,

@@ -10,7 +10,7 @@ fn usage(args: Vec<String>) {
     println!("Usage: {} input_file scope", args[0]);
 }
 
-/// Reads bad rules from a file.
+/// Reads adapter joltages from a file.
 fn read_adapters<P>(filename: P) -> Result<Vec<u32>, String>
 where
     P: AsRef<Path>,
