@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate utils;
+
 use std::env;
 use std::path::Path;
 use std::process;
@@ -109,33 +112,40 @@ fn main() {
         process::exit(1);
     }
     let input_path = String::from(&args[1]);
-    let (depart, bus_ids) = match read_bus_data(&input_path) {
-        Ok((d, bids)) => (d, bids),
-        Err(e) => {
-            eprintln!("Failed to read bus data: {}", e);
-            process::exit(1);
+    let (depart, bus_ids) = timed_section!("Initialization", { read_bus_data(&input_path) }, |v| {
+        match v {
+            Ok((d, bids)) => (d, bids),
+            Err(e) => {
+                eprintln!("Failed to read bus data: {}", e);
+                process::exit(1);
+            }
         }
-    };
+    });
 
-    println!("\n==== Part 1 ====");
-    match get_earliest_bus(depart, &bus_ids) {
-        Some((earliest_bus, wait_time)) => {
-            println!("Earliest available bus: {}", earliest_bus);
-            println!("Wait time: {}", wait_time);
+    timed_section!("Part 1", { get_earliest_bus(depart, &bus_ids) }, |v| {
+        match v {
+            Some((earliest_bus, wait_time)) => {
+                println!("Earliest available bus: {}", earliest_bus);
+                println!("Wait time: {}", wait_time);
+                println!(
+                    "Product of bus ID and wait time: {}",
+                    (earliest_bus as usize) * wait_time
+                );
+            }
+            None => {
+                println!("No buses found");
+            }
+        }
+    });
+
+    timed_section!(
+        "Part 2",
+        { get_lowest_subsequent_depart_time(&bus_ids) },
+        |soonest_seq_time| {
             println!(
-                "Product of bus ID and wait time: {}",
-                (earliest_bus as usize) * wait_time
+                "Soonest time for synchronous subsequent departures: {}",
+                soonest_seq_time
             );
         }
-        None => {
-            println!("No buses found");
-        }
-    }
-
-    println!("\n==== Part 2 ====");
-    let soonest_seq_time = get_lowest_subsequent_depart_time(&bus_ids);
-    println!(
-        "Soonest time for synchronous subsequent departures: {}",
-        soonest_seq_time
     );
 }
