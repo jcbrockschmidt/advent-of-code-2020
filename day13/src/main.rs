@@ -1,6 +1,7 @@
 use std::env;
 use std::path::Path;
 use std::process;
+use std::usize;
 use utils::read_lines;
 
 /// Prints usage statement for the executable.
@@ -9,7 +10,7 @@ fn usage(args: Vec<String>) {
 }
 
 /// Reads departure time and bus IDs from a file.
-fn read_bus_data<P>(filename: P) -> Result<(u32, Vec<u32>), String>
+fn read_bus_data<P>(filename: P) -> Result<(u32, Vec<Option<u32>>), String>
 where
     P: AsRef<Path>,
 {
@@ -47,42 +48,58 @@ where
     let mut bus_ids = Vec::new();
     for id_str in lines_str[1].split(',') {
         if id_str == "x" {
-            continue;
-        }
-        match id_str.parse::<u32>() {
-            Ok(id) => bus_ids.push(id),
-            Err(_) => return Err(format!("Failed to parse bus ID \"{}\"", id_str)),
+            bus_ids.push(None);
+        } else {
+            match id_str.parse::<u32>() {
+                Ok(id) => bus_ids.push(Some(id)),
+                Err(_) => return Err(format!("Failed to parse bus ID \"{}\"", id_str)),
+            }
         }
     }
     Ok((depart, bus_ids))
 }
 
 /// Calculates the time until a bus arrives after a given `start` time.
-fn get_time_until_bus(start: u32, bus_id: u32) -> u32 {
-    let time = start / bus_id * bus_id;
-    if time == start {
-        time - start
-    } else {
-        time + bus_id - start
-    }
+fn get_time_until_bus(start: u32, bus_id: u32) -> usize {
+    // Two modulos are use to avoid a subtract with underflow.
+    ((bus_id - start % bus_id) % bus_id) as usize
 }
 
 /// Gets the bus with the shortest time until arrival after a given `start` time.
 /// Returns the bus ID and minimum wait time.
-fn get_earliest_bus(start: u32, bus_ids: &Vec<u32>) -> Option<(u32, u32)> {
-    if bus_ids.len() == 0 {
-        return None;
-    }
-    let mut best_bus_id = bus_ids[0];
-    let mut min_wait_time = get_time_until_bus(start, best_bus_id);
-    for bus_id in bus_ids.iter().skip(1) {
-        let wait_time = get_time_until_bus(start, *bus_id);
-        if wait_time < min_wait_time {
-            best_bus_id = *bus_id;
-            min_wait_time = wait_time;
+fn get_earliest_bus(start: u32, bus_ids: &Vec<Option<u32>>) -> Option<(u32, usize)> {
+    let mut best_bus_id: Option<u32> = None;
+    let mut min_wait_time: usize = usize::MAX;
+    for bus_id in bus_ids.iter() {
+        if let Some(id) = bus_id.as_ref() {
+            let wait_time = get_time_until_bus(start, *id);
+            if wait_time < min_wait_time {
+                best_bus_id = Some(*id);
+                min_wait_time = wait_time;
+            }
         }
     }
-    return Some((best_bus_id, min_wait_time));
+    best_bus_id.map(|id| (id, min_wait_time))
+}
+
+/// Find the lowest time at which all buses leave in order a minute after the last.
+fn get_lowest_subsequent_depart_time(bus_ids: &Vec<Option<u32>>) -> usize {
+    let mut step = 1;
+    let mut t: usize = 0;
+    for cur_id in bus_ids.iter() {
+        if let Some(bus_incr) = cur_id.map(|id| id as usize) {
+            loop {
+                if t % bus_incr == 0 {
+                    step *= bus_incr;
+                    break;
+                } else {
+                    t += step;
+                }
+            }
+        }
+        t += 1;
+    }
+    t - bus_ids.len()
 }
 
 fn main() {
@@ -107,11 +124,18 @@ fn main() {
             println!("Wait time: {}", wait_time);
             println!(
                 "Product of bus ID and wait time: {}",
-                earliest_bus * wait_time
+                (earliest_bus as usize) * wait_time
             );
         }
         None => {
             println!("No buses found");
         }
     }
+
+    println!("\n==== Part 2 ====");
+    let soonest_seq_time = get_lowest_subsequent_depart_time(&bus_ids);
+    println!(
+        "Soonest time for synchronous subsequent departures: {}",
+        soonest_seq_time
+    );
 }
