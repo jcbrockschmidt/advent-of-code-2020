@@ -20,13 +20,12 @@ fn memory_game(start_nums: &Vec<usize>, last_turn: usize) -> usize {
         // Turn numbers start at 1, not 0.
         last_spoke.insert(*n, i + 1);
     }
-    // Assumes there are some start numbers.
+    // Assumes there is at least one start number.
     let mut prev = *start_nums.last().unwrap();
     for turn in (start_nums.len() + 1)..(last_turn + 1) {
-        let cur: usize = if last_spoke.contains_key(&prev) {
-            turn - 1 - last_spoke.get(&prev).unwrap()
-        } else {
-            0
+        let cur: usize = match last_spoke.get(&prev) {
+            Some(last) => turn - 1 - last,
+            None => 0,
         };
         last_spoke.insert(prev, turn - 1);
         prev = cur;
@@ -56,5 +55,9 @@ fn main() {
 
     timed_section!("Part 1", { memory_game(&start_nums, 2020) }, |v| {
         println!("At turn 2020: {}", v);
+    });
+
+    timed_section!("Part 2", { memory_game(&start_nums, 30_000_000) }, |v| {
+        println!("At 30000000 turns: {}", v);
     });
 }
