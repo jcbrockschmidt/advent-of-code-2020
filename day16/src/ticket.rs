@@ -3,6 +3,7 @@
 use std::slice::Iter;
 
 /// A ticket with ordered, unlabeled fields.
+#[derive(Clone)]
 pub struct Ticket {
     pub values: Vec<u32>,
 }
